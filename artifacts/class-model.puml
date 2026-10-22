@@ -1,0 +1,277 @@
+@startuml
+title Классы модели матчмейкинга
+skinparam classAttributeIconSize 0
+hide empty members
+
+enum EventType {
+  SEARCH_REQUESTED
+  LOBBY_FORMED
+}
+class Event {
+  - time: double
+  - type: EventType
+  - player: Player
+  - server: MatchmakingServer
+  + getTime(): double
+  + getType(): EventType
+  + getPlayer(): Player
+  + getServer(): MatchmakingServer
+}
+class EventCalendar {
+  - events: PriorityQueue<Event>
+  - currentTime: double
+  + schedule(event: Event)
+  + next(): Event
+  + isEmpty(): boolean
+  + getCurrentTime(): double
+  + snapshot(): List<Event>
+}
+
+class SearchRequest {
+  - playerId: int
+  - requestNo: int
+  - arrivalTime: double
+  - serviceStartTime: double
+  - serviceEndTime: double
+  - serverId: int
+  + getPlayerId(): int
+  + getRequestNo(): int
+  + getArrivalTime(): double
+  + getServiceStartTime(): double
+  + getServiceEndTime(): double
+  + setServiceStart(t: double, serverId: int)
+  + setServiceEnd(t: double)
+}
+
+interface RandomLaw {
+  + next(): double
+}
+class ExponentialLaw {
+  - rate: double
+  + next(): double
+}
+
+class RingPointer {
+  - size: int
+  - position: int
+  + current(): int
+  + indexAt(shift: int): int
+  + moveAfter(index: int)
+}
+
+interface PlacementPolicy {
+  + findCell(cells: SearchRequest[], pointer: RingPointer): int
+}
+class RingPlacement <<Д1ОЗ1>> {
+  + findCell(cells: SearchRequest[], pointer: RingPointer): int
+}
+interface EvictionPolicy {
+  + chooseVictim(cells: SearchRequest[]): int
+}
+class OldestEviction <<Д1ОО3>> {
+  + chooseVictim(cells: SearchRequest[]): int
+}
+interface RequestSelectionPolicy {
+  + findCell(cells: SearchRequest[], pointer: RingPointer): int
+}
+class RingRequestSelection <<Д2Б3>> {
+  + findCell(cells: SearchRequest[], pointer: RingPointer): int
+}
+interface ServerSelectionPolicy {
+  + findServer(servers: MatchmakingServer[], pointer: RingPointer): MatchmakingServer
+}
+class RingServerSelection <<Д2П2>> {
+  + findServer(servers: MatchmakingServer[], pointer: RingPointer): MatchmakingServer
+}
+
+enum EnqueueStatus {
+  STORED
+  OLDEST_CANCELLED
+}
+class EnqueueResult {
+  - status: EnqueueStatus
+  - cellIndex: int
+  - cancelled: SearchRequest
+  + getStatus(): EnqueueStatus
+  + getCellIndex(): int
+  + getCancelled(): SearchRequest
+}
+
+class Player <<ИБ, ИЗ1>> {
+  - id: int
+  - requestCounter: int
+  - law: RandomLaw
+  - calendar: EventCalendar
+  - dispatcher: EnqueueDispatcher
+  - statistics: MatchmakingStatistics
+  + scheduleNext(t: double)
+  + onSearchRequested(t: double)
+  - createRequest(t: double): SearchRequest
+}
+class EnqueueDispatcher {
+  - queue: MatchmakingQueue
+  - assignment: AssignmentDispatcher
+  - statistics: MatchmakingStatistics
+  + enqueue(request: SearchRequest)
+}
+class MatchmakingQueue {
+  - cells: SearchRequest[]
+  - putPointer: RingPointer
+  - takePointer: RingPointer
+  - placement: PlacementPolicy
+  - eviction: EvictionPolicy
+  - selection: RequestSelectionPolicy
+  + put(request: SearchRequest): EnqueueResult
+  + takeNext(): SearchRequest
+  + isEmpty(): boolean
+  + getCells(): SearchRequest[]
+  + getPutPointer(): RingPointer
+  + getTakePointer(): RingPointer
+}
+class AssignmentDispatcher {
+  - queue: MatchmakingQueue
+  - servers: MatchmakingServer[]
+  - serverPointer: RingPointer
+  - serverSelection: ServerSelectionPolicy
+  - statistics: MatchmakingStatistics
+  + onQueueChanged()
+  + onServerReleased(server: MatchmakingServer)
+  + getServerPointer(): RingPointer
+  - startFromQueue(server: MatchmakingServer)
+}
+class MatchmakingServer <<ПЗ1>> {
+  - id: int
+  - current: SearchRequest
+  - busyTime: double
+  - law: RandomLaw
+  - calendar: EventCalendar
+  - dispatcher: AssignmentDispatcher
+  - statistics: MatchmakingStatistics
+  + startLobbyBuilding(request: SearchRequest, t: double)
+  + onLobbyFormed(t: double)
+  + isBusy(): boolean
+  + getId(): int
+  + getCurrent(): SearchRequest
+  + getBusyTime(): double
+}
+class MatchmakingStatistics {
+  - generated: int[]
+  - cancelled: int[]
+  - processed: int[]
+  - sumWait: double[]
+  - sumWait2: double[]
+  - sumService: double[]
+  - sumService2: double[]
+  - sumInSystem: double[]
+  - lastCancelled: SearchRequest
+  + registerGenerated(request: SearchRequest)
+  + registerCancelled(request: SearchRequest)
+  + registerWaiting(request: SearchRequest, wait: double)
+  + registerProcessed(request: SearchRequest)
+  + getCancelRate(): double
+  + getLastCancelled(): SearchRequest
+  + buildSummaryTable(servers: MatchmakingServer[], T: double): SummaryTable
+}
+class SimulationController {
+  - calendar: EventCalendar
+  - players: Player[]
+  - queue: MatchmakingQueue
+  - enqueueDispatcher: EnqueueDispatcher
+  - assignment: AssignmentDispatcher
+  - servers: MatchmakingServer[]
+  - statistics: MatchmakingStatistics
+  - maxRequests: int
+  + step(): SystemState
+  + runAuto(nRequests: int): SummaryTable
+  - dispatch(event: Event)
+  - buildState(event: Event): SystemState
+}
+class SampleSizeEstimator {
+  - confidence: double
+  - accuracy: double
+  + findN(config: SystemConfig): int
+}
+class ExperimentRunner {
+  - estimator: SampleSizeEstimator
+  + runSeries(configs: List<SystemConfig>): List<SummaryTable>
+  + buildCharts(results: List<SummaryTable>): List<ResultChart>
+}
+class SystemConfig {
+  + playerCount: int
+  + serverCount: int
+  + queueSize: int
+  + arrivalRates: double[]
+  + serviceRate: double
+}
+class SystemState <<ОД2>> {
+  + time: double
+  + lastEvent: Event
+  + lastArrived: SearchRequest
+  + lastCancelled: SearchRequest
+  + queueCells: SearchRequest[]
+  + putPointer: int
+  + takePointer: int
+  + serverPointer: int
+  + servers: SearchRequest[]
+  + cancelRate: double
+  + calendar: List<Event>
+}
+class SummaryTable {
+  + perPlayer: generated, Pотк, Твс, Тож, Тобсл, Dож, Dобсл
+  + perServer: Kисп
+}
+class ResultChart <<ОР2>> {
+  + title: String
+  + xParameter: String
+  + yCharacteristic: String
+  + points: List<Point>
+}
+
+RandomLaw <|.. ExponentialLaw
+PlacementPolicy <|.. RingPlacement
+EvictionPolicy <|.. OldestEviction
+RequestSelectionPolicy <|.. RingRequestSelection
+ServerSelectionPolicy <|.. RingServerSelection
+
+EventCalendar "1" o-- "0..*" Event
+Event --> EventType
+SimulationController *-- "1" EventCalendar
+SimulationController *-- "1..*" Player
+SimulationController *-- "1" MatchmakingQueue
+SimulationController *-- "1" EnqueueDispatcher
+SimulationController *-- "1" AssignmentDispatcher
+SimulationController *-- "1..*" MatchmakingServer
+SimulationController *-- "1" MatchmakingStatistics
+SimulationController ..> SystemState : creates
+Player --> EventCalendar
+Player --> RandomLaw
+Player --> EnqueueDispatcher
+Player --> MatchmakingStatistics
+Player ..> SearchRequest : creates
+EnqueueDispatcher --> MatchmakingQueue
+EnqueueDispatcher --> AssignmentDispatcher
+EnqueueDispatcher --> MatchmakingStatistics
+MatchmakingQueue "1" o-- "0..B" SearchRequest
+MatchmakingQueue *-- "2" RingPointer
+MatchmakingQueue --> PlacementPolicy
+MatchmakingQueue --> EvictionPolicy
+MatchmakingQueue --> RequestSelectionPolicy
+MatchmakingQueue ..> EnqueueResult : returns
+EnqueueResult --> EnqueueStatus
+AssignmentDispatcher --> MatchmakingQueue
+AssignmentDispatcher "1" --> "1..N" MatchmakingServer
+AssignmentDispatcher *-- "1" RingPointer
+AssignmentDispatcher --> ServerSelectionPolicy
+AssignmentDispatcher --> MatchmakingStatistics
+MatchmakingServer --> AssignmentDispatcher : onServerReleased
+MatchmakingServer --> EventCalendar
+MatchmakingServer --> RandomLaw
+MatchmakingServer --> MatchmakingStatistics
+MatchmakingServer "1" o-- "0..1" SearchRequest
+MatchmakingStatistics ..> SummaryTable : builds
+ExperimentRunner --> SampleSizeEstimator
+ExperimentRunner --> SimulationController : runAuto
+ExperimentRunner ..> SystemConfig : uses
+ExperimentRunner ..> ResultChart : builds
+SampleSizeEstimator --> SimulationController : пробные прогоны
+@enduml

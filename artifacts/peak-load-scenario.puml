@@ -1,0 +1,57 @@
+@startuml
+title Сценарий пиковой нагрузки: очередь переполняется, затем освобождается сервер
+skinparam sequenceMessageAlign left
+
+participant "Player[k]" as Pl
+participant "EnqueueDispatcher" as ED
+queue "MatchmakingQueue" as Q
+participant "AssignmentDispatcher" as AD
+participant "MatchmakingServer[i]" as Srv
+collections "EventCalendar" as Cal
+database "MatchmakingStatistics" as St
+
+note over Pl: ИЗ1: интервалы между запросами Exp(λk)
+
+Cal -> Pl: SEARCH_REQUESTED(t)
+Pl -> St: registerGenerated(request)
+Pl -> Cal: schedule(следующий SEARCH_REQUESTED)
+Pl -> ED: enqueue(request)
+ED -> Q: put(request)
+alt по кольцу с putPointer найдена свободная ячейка (Д1ОЗ1)
+  Q -> Q: записать запрос, putPointer.moveAfter(cell)
+  Q --> ED: STORED
+else указатель обошёл всю очередь (Д1ОО3)
+  Q -> Q: найти запрос с min arrivalTime,\nзаписать новый в его ячейку
+  Q --> ED: OLDEST_CANCELLED(old)
+  ED -> St: registerCancelled(old)
+end
+ED -> AD: onQueueChanged()
+AD -> Srv: isBusy() по кольцу с serverPointer (Д2П2)
+alt найден свободный сервер
+  Srv --> AD: false
+  AD -> AD: serverPointer.moveAfter(server)
+  AD -> Q: takeNext() (Д2Б3)
+  Q --> AD: request
+  AD -> St: registerWaiting(request, t - arrivalTime)
+  AD -> Srv: startLobbyBuilding(request, t)
+  Srv -> Cal: schedule(LOBBY_FORMED, t + τ), τ ~ Exp(μ) (ПЗ1)
+else все серверы заняты
+  Srv --> AD: true
+  AD --> ED: запрос ждёт в очереди
+end
+
+... позже ...
+
+Cal -> Srv: LOBBY_FORMED(t)
+Srv -> St: registerProcessed(request)
+Srv -> AD: onServerReleased(this)
+alt очередь не пуста
+  AD -> Q: takeNext() (Д2Б3)
+  Q --> AD: request
+  AD -> St: registerWaiting(request, t - arrivalTime)
+  AD -> Srv: startLobbyBuilding(request, t)
+  Srv -> Cal: schedule(LOBBY_FORMED, t + τ)
+else очередь пуста
+  note right of AD: сервер простаивает до следующего onQueueChanged
+end
+@enduml

@@ -1,0 +1,33 @@
+@startuml
+title Формализованная схема СМО: матчмейкинг FACEIT
+left to right direction
+skinparam shadowing false
+
+rectangle "Игроки\nИ1 … Иn\nИБ, ИЗ1" as P
+rectangle "Диспетчер\nпостановки\nД1ОЗ1, Д1ОО3" as DP
+queue "Очередь поиска\nячейки 1 … B" as Q
+rectangle "Диспетчер\nвыбора\nД2Б3, Д2П2" as DV
+rectangle "Сервер 1\nПЗ1" as S1
+rectangle "Сервер 2\nПЗ1" as S2
+rectangle "Сервер N\nПЗ1" as SN
+rectangle "Лобби собрано" as OK
+rectangle "Поиск отменён\n(отказ)" as REJ
+
+P --> DP : запрос
+DP --> Q : свободная ячейка
+DP --> REJ : выбит самый\nстарый запрос
+Q --> DV
+DV --> S1
+DV --> S2
+DV --> SN
+S1 --> OK
+S2 --> OK
+SN --> OK
+
+note bottom of Q
+  Три кольцевых указателя:
+  putPointer (постановка),
+  takePointer (выбор запроса),
+  serverPointer (выбор сервера)
+end note
+@enduml

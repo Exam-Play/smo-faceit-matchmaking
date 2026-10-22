@@ -1,0 +1,16 @@
+@startuml
+title Состояния запроса на поиск матча
+state "Создан" as Created
+state "В очереди" as Queued
+state "Подбор лобби" as Matching
+state "Лобби собрано" as Done
+state "Поиск отменён" as Cancelled
+
+[*] --> Created : игрок нажал «Искать матч»
+Created --> Queued : запись в ячейку\n(Д1ОЗ1 или вытеснение Д1ОО3)
+Queued --> Matching : сервер свободен,\nзапрос выбран (Д2Б3, Д2П2)
+Queued --> Cancelled : выбит более новым\nзапросом (Д1ОО3)
+Matching --> Done : истекло время τ ~ Exp(μ)
+Done --> [*]
+Cancelled --> [*]
+@enduml
