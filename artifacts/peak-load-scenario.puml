@@ -18,18 +18,18 @@ Pl -> Cal: schedule(следующий SEARCH_REQUESTED)
 Pl -> ED: enqueue(request)
 ED -> Q: put(request)
 alt по кольцу с putPointer найдена свободная ячейка (Д1ОЗ1)
-  Q -> Q: записать запрос, putPointer.moveAfter(cell)
-  Q --> ED: STORED
+  Q -> Q: записать запрос, putPointer = следующая ячейка после записанной
+  Q --> ED: null (никого не отменили)
 else указатель обошёл всю очередь (Д1ОО3)
   Q -> Q: найти запрос с min arrivalTime,\nзаписать новый в его ячейку
-  Q --> ED: OLDEST_CANCELLED(old)
+  Q --> ED: отменённый запрос old
   ED -> St: registerCancelled(old)
 end
 ED -> AD: onQueueChanged()
 AD -> Srv: isBusy() по кольцу с serverPointer (Д2П2)
 alt найден свободный сервер
   Srv --> AD: false
-  AD -> AD: serverPointer.moveAfter(server)
+  AD -> AD: serverPointer = следующий сервер после выбранного
   AD -> Q: takeNext() (Д2Б3)
   Q --> AD: request
   AD -> St: registerWaiting(request, t - arrivalTime)

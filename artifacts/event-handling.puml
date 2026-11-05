@@ -28,7 +28,7 @@ repeat
         :cancelled[игрок выбитого]++;
         |Очередь|
       endif
-      :putPointer.moveAfter(ячейка);
+      :putPointer = следующая ячейка после записанной;
     else (нет)
       :Событие отбрасывается;
     endif
@@ -41,10 +41,10 @@ repeat
   |Диспетчер выбора|
   :Искать свободный сервер по кольцу\nс serverPointer (Д2П2);
   if (Сервер найден и очередь не пуста?) then (да)
-    :serverPointer.moveAfter(сервер);
+    :serverPointer = следующий сервер после выбранного;
     |Очередь|
     :Взять запрос по кольцу с takePointer (Д2Б3),\nосвободить ячейку без сдвига;
-    :takePointer.moveAfter(ячейка);
+    :takePointer = следующая ячейка после взятой;
     |Статистика|
     :Тож = t − arrivalTime;
     |Сервер|
