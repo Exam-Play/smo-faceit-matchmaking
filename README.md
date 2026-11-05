@@ -36,10 +36,6 @@
 
 ![Классы](artifacts/imgs/class-model.svg)
 
-Состояния запроса:
-
-![Состояния запроса](artifacts/imgs/request-state.svg)
-
 Обработка событий:
 
 ![Обработка событий](artifacts/imgs/event-handling.svg)
