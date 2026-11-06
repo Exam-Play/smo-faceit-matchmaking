@@ -64,7 +64,7 @@ class Simulation:
         self.stats.generated[k] += 1
 
         self._schedule(self.time + self.rng.expovariate(self.lam), SEARCH_REQUESTED, k)
-
+    
         old = self.queue.put(req)
         msg = f"заявка {req.label} поступила в очередь."
         if old is not None:
