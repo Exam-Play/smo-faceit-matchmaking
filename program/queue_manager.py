@@ -1,38 +1,38 @@
 class MatchmakingQueue:
     def __init__(self, size):
+        if size <= 0:
+            raise ValueError("Размер буфера должен быть положительным")
         self.size = size
         self.cells = [None] * size
         self.put_ptr = 0
         self.take_ptr = 0
 
     def is_empty(self):
-        return all(c is None for c in self.cells)
+        return all(cell is None for cell in self.cells)
 
-    def put(self, req):
-        for i in range(self.size):
-            idx = (self.put_ptr + i) % self.size
-
-            if self.cells[idx] is None:
-                self.cells[idx] = req
-                self.put_ptr = (idx + 1) % self.size
+    def put(self, request):
+        for offset in range(self.size):
+            index = (self.put_ptr + offset) % self.size
+            if self.cells[index] is None:
+                self.cells[index] = request
+                self.put_ptr = (index + 1) % self.size
                 return None
 
-        idx = min(range(self.size), key=lambda k: self.cells[k].arrival_time)
-        old = self.cells[idx]
-
-        self.cells[idx] = req
-        self.put_ptr = (idx + 1) % self.size
-
-        return old
+        index = min(
+            range(self.size),
+            key=lambda i: self.cells[i].arrival_time
+        )
+        cancelled_request = self.cells[index]
+        self.cells[index] = request
+        self.put_ptr = (index + 1) % self.size
+        return cancelled_request
 
     def take_next(self):
-        for i in range(self.size):
-            idx = (self.take_ptr + i) % self.size
-
-            if self.cells[idx] is not None:
-                req = self.cells[idx]
-                self.cells[idx] = None
-                self.take_ptr = (idx + 1) % self.size
-                return req
-
+        for offset in range(self.size):
+            index = (self.take_ptr + offset) % self.size
+            if self.cells[index] is not None:
+                request = self.cells[index]
+                self.cells[index] = None
+                self.take_ptr = (index + 1) % self.size
+                return request
         return None
